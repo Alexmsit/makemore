@@ -4,7 +4,7 @@
 
 ## 1. Info
 
-This repository contains code as well as notes from the [spelled-out into to Large Language Modeling](https://www.youtube.com/watch?v=PaCmpygFfXo&t=5s) by Andrej Karpathy. This lecture shows how makemore, which is an autoregressive character-level language model, is built from scratch.
+This repository contains code from the [spelled-out into to Large Language Modeling](https://www.youtube.com/watch?v=PaCmpygFfXo&t=5s) by Andrej Karpathy. This lecture shows how makemore, which is an autoregressive character-level language model, is built from scratch.
 
 <hr>
 
