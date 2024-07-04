@@ -27,7 +27,7 @@ P = P / P.sum(dim=2, keepdim=True)              # the probability of each bigram
 
 # generate predictions with the model
 preds = []
-print("\nGenerating predictions with the basic bigram model...\n")
+print("\nGenerating predictions with the basic trigram model...\n")
 for i in range(5):
     out = []                                    # this list holds the generated characters of the output name
     ix1 = 0                                     # this is the index of the first and second character (from itos: 0 : "." -> special token to start the sequence)

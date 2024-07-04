@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 
+from utils.build_dataset import build_dataset
+
 
 # init generator for deterministic behaveiour
 g = torch.Generator().manual_seed(1111) 
@@ -29,22 +31,24 @@ labels = torch.tensor(labels)
 num = data.nelement()                                       # get the number of training examples
 
 # train loop
-for k in range(100):
+print("Start training with the single-layer neural net model...")
+for k in range(1000):
+
     # forward pass
     data_enc = F.one_hot(data, num_classes=27).float()      # encode the data as 1-hot-encoding (which now has the dims [N, 27])
     logits = data_enc @ W                                   # calculate the product of weight matrix and data matrix (the whole dataset is processed in 1 step, no batches here)
                                                             # dims: [N,27] @ [27,27] = [N,27]
     counts = logits.exp()                                   # exponentiate the logits and normalize by the sum of counts over the whole row
     probs = counts / counts.sum(1, keepdims=True)           # normalize all counts by the sum over all counts of the corresponding row (this is the Softmax function, https://pytorch.org/docs/stable/generated/torch.nn.Softmax.html) 
-    loss = -probs[torch.arange(num), labels].log().mean()   # calculate logarithmic probabilities, then calculate the mean of these probabilities and inverse it (results in average log liklihood)
-    #print(f"Epoch {k} Loss: {loss.item()}")                 
+    loss = -probs[torch.arange(num), labels].log().mean()   # calculate logarithmic probabilities, then calculate the mean of these probabilities and inverse it (results in average log liklihood)               
 
     # backward pass
     W.grad = None                                           # reset gradients
     loss.backward()                                         # calculate backward pass
  
     # update
-    W.data += -50 * W.grad                                   # update weights
+    W.data += -50 * W.grad                                  # update weights
+print(f"Training finished, loss is at {loss.item():.4f}")
 
 # generate predictions with the model
 preds = []
