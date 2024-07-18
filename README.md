@@ -34,9 +34,15 @@ Apart from using trigrams, the method uses the same statistical approach to gene
 
 ### 3.3 Single-Layer Neural Network Bigram Language Model
 
-A more complex way of implementing makemore is the usage of a character-level single-layer neural network. This model works with a single-layer neural network, which learns representations from the training data to generate predictions. Instead of creating a matrix with statistical probabilities from the training data as seen in the last to sections, this model learns probabilities through optimization of the paramter of the model. While this weight matrix has the same shape as the matrix in the first section, the paramters are randomly initialized and optimized through gradient descent.
+A more complex way of implementing makemore is the usage of a character-level single-layer neural network bigram language model. This model works with a single-layer neural network, which learns representations from the training data to generate predictions. Instead of creating a matrix with statistical probabilities from the training data as seen in the last two sections, this model learns probabilities through optimization of the paramters of the model. While this weight matrix has the same shape as the matrix in the first section, the paramters are randomly initialized and optimized through gradient descent.
 
 Since this implementation of makemore contains a single-layer neural network, a training is necessary. Here the data is multiplicated with the weight matrix. This results in the logits of the model, which then get exponentiated and normalized (which is the Softmax function) to get the probabilities for each bigram pair. The evaluation also uses the calculation of the average log likelihood as described in the last section.
+
+### 3.4 MLP Language Model with input embedding
+
+Another similiar way of implementing makemore is the usage of an input embedding followed by a MLP. This model takes the input and embedds it as a high-dimensional vector. This representation is then fed into two linear layers to generate predictions. As explained in the last section, this model also learns representations from the training data by optimizing the parameters of the model through gradient descent. Here the paramteres are from the two weight matrices, their biases and the input embedding.
+
+Since we have an input embedding and two linear layers, a training is necessary. Here the input is embedded in a high-dimensional vector, then this data is multiplicated with the weight matrices of the two linear layers to generate the logits. The parameters of the linear layers as well as the input embedding are optimized. This logits then get exponentiated and normalized (Softmax) to get the probabilities of the next character. The evaluation also uses the calculation of the average log likelihood as described above. 
 
 <hr>
 

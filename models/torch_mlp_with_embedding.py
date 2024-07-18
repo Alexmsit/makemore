@@ -1,71 +1,103 @@
+import sys
+sys.path.append('../')
+import random 
+
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-import random
 
-from utils.build_dataset import build_dataset
+from torch.optim import SGD
+
+from utils.build_dataset import load_data, build_dataset
 
 
 
-def main():
+class MLP(nn.Module):
+
+    def __init__(self, vocab_size, emb_dim, block_size, n_hidden):
+        super().__init__()
+
+        self.emb_dim = emb_dim
+        self.block_size = block_size
+
+        self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=emb_dim)
+        self.linear_1 = nn.Linear(in_features=block_size*emb_dim, out_features=n_hidden, bias=False)
+        self.bn1 = nn.BatchNorm1d(num_features=n_hidden)
+        self.tanh = nn.Tanh()
+        self.linear_2 = nn.Linear(in_features=n_hidden, out_features=vocab_size, bias=False)
+        self.bn_2 = nn.BatchNorm1d(num_features=vocab_size)
+    
+    def forward(self, x):
+
+        x = self.embedding(x).view(-1, self.block_size*self.emb_dim)
+        x = self.linear_1(x)
+        x = self.bn1(x)
+        x = self.tanh(x)
+        x = self.linear_2(x)
+        logits = self.bn_2(x)
+
+        return logits
+
+
+
+def main(): 
 
     # fix seeds for deterministic behaveiour
     g = torch.Generator().manual_seed(1111) 
     random.seed(1111)
+    
+    # load data, vocab_size and mapping between int and str
+    words, vocab_size, stoi, itos = load_data("../data/names.txt")
 
-    # load data, create mapping between strings and integers
-    words = open("data/names.txt", "r").read().splitlines()         # store data in list, each element is one string
-    unique_chars = sorted(list(set("".join(words))))                # get all unique characters of the data
-    stoi = {s:i+1 for i,s in enumerate(unique_chars)}               # create string to int mapping       
-    stoi["."] = 0                                                   # add "." string at index 0 (this char symbolizes the beginning and end of a sequence)
-    itos = {i:s for s,i in stoi.items()}                            # create int to string mapping
+    # set parameters of model
+    block_size = 3      # context window (how many chars does the model take to predict the next one?) 
+    emb_dim = 10       # dimensionality of the character embedding vectors
+    n_hidden = 200      # number of neurons in the hidden layer
 
-    # set context window (how many chars does the model take to predict the next one?)
-    block_size = 3      
+    # create model
+    model = MLP(vocab_size, emb_dim, block_size, n_hidden)
+
+    # create optimizer
+    optimizer = SGD(model.parameters(), lr=0.003)
 
     # create the dataset splits
     random.shuffle(words)
     n1 = int(0.8*len(words))
     n2 = int(0.9*len(words))
-
+    
     X_train, Y_train = build_dataset(words[:n1], stoi, block_size)  # shape = [N,3,10]
     X_val, Y_val = build_dataset(words[n1:n2], stoi, block_size)    
     X_test, Y_test = build_dataset(words[n2:], stoi, block_size)
 
-    # create model (Embedding and two linear layers (MLP))
-    C = torch.randn((27,10), generator=g, requires_grad=True)
-    W1 = torch.randn((30,200), generator=g, requires_grad=True)
-    b1 = torch.randn(200, generator=g, requires_grad=True)
-    W2 = torch.randn((200, 27), generator=g, requires_grad=True)
-    b2 = torch.randn(27, generator=g, requires_grad=True)
-    params = [C, W1, b1, W2, b2]
-
     # train loop
-    loss_step = []
+    batch_size = 32
+    max_steps = 20000
     steps = []
+    loss_step = []
     print("Start training of the MLP model...")
-    for i in range(10000):
+    for i in range(max_steps):
 
         # create minibatch with randomly selected data
-        ix = torch.randint(0, X_train.shape[0], (32,))
+        ix = torch.randint(0, X_train.shape[0], (batch_size,))
+        X_train_batch = X_train[ix]
+        Y_train_batch = Y_train[ix]
 
-        # forward pass                   
-        emb = C[X_train[ix]].view(-1, 30)       # embed the input data as vector (shape = [N,30])
-        h = torch.tanh(emb @ W1 + b1)           # [N,30] @ [30,200] = [N,200]
-        logits = h @ W2 + b2                    # [N,200] @ [200,27] = [N,27]
-        loss_train = F.cross_entropy(logits, Y_train[ix])   # calculate softmax and negative log liklihood (with high efficiency)
+        # forward pass
+        logits = model(X_train_batch)
+        
+        # loss
+        loss_train = F.cross_entropy(logits, Y_train_batch)   # calculate softmax and negative log liklihood (with high efficiency)
         
         # backward pass
-        for p in params:
-            p.grad = None
+        optimizer.zero_grad()
         loss_train.backward()
 
         # update
-        for p in params:
-            p.data += -0.1 * p.grad
+        optimizer.step()
 
         # track stats
-        loss_step.append(loss_train.item())
-        steps.append(i)
+        if i % 1000 == 0:
+            print(f"step: {i} | loss: {loss_train:.4f}")
     
     print(f"Training finished, loss is at {loss_train:.4f}\n")
 
@@ -73,9 +105,8 @@ def main():
     print("Start validation of the MLP model...")
     for i in range(1):
                          
-        emb = C[X_val].view(-1, 30)       
-        h = torch.tanh(emb @ W1 + b1)           
-        logits = h @ W2 + b2                    
+        logits = model(X_val)    
+
         loss_val = F.cross_entropy(logits, Y_val)
     
     print(f"Validation finished, loss is at {loss_val}.\n")
@@ -93,9 +124,8 @@ def main():
         while True:
 
             # forward pass
-            emb = C[torch.tensor([context])]
-            h = torch.tanh(emb.view(1, -1) @ W1 + b1)           
-            logits = h @ W2 + b2                    
+            logits = model(torch.tensor(context))  
+
             probs = F.softmax(logits, dim=1)        
             ix = torch.multinomial(probs, num_samples=1, generator=g).item()
             
