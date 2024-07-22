@@ -4,7 +4,8 @@ import torch
 
 def load_data(path):
     """
-    This function returns a list with all training elements as well as the mapping from int to string.
+    Returns a list with all training elements as well as the mapping from int to string.
+
     Params:
         - path: Relative path to the file which contains all the names (str)
     
