@@ -85,6 +85,7 @@ class MLP(nn.Module):
 def main(): 
 
     args = parse_args()
+    
 
     # fix seeds for deterministic behaveiour
     g = torch.Generator().manual_seed(1111) 
@@ -144,7 +145,8 @@ def main():
     
     print(f"Training finished, loss is at {loss_train:.4f}\n")
 
-    get_activation_statistics(model.activation_dict, args.save_figs)
+    if args.debug:
+        get_activation_statistics(model.activation_dict, args.save_figs, metrics=["single_hist", "multi_hist", "heatmap"])
 
     # validation loop
     print("Start validation of the MLP model...")
